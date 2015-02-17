@@ -1,0 +1,101 @@
+#!/bin/bash
+# 
+# Bash script that takes the job id of a Bacula backup and the IP address of a new machine with
+# Bacula installed (but otherwise no Bacula setup) and restores all files from the backup job to the 
+# 'new' machine. Right now they will go to the directory /tmp/bacula-restores (this is specified in my
+# bacula-dir.conf).
+# 
+# Author: Ryan Halbrook
+# Date:  2/17/2015
+#
+
+
+CLIENT_IP=' '
+KEY_FILE=backuptest.key
+PWD=TEST_PWD
+
+jobid=' '
+jflag=false
+mflag=false
+while getopts "j:m:" opt; do
+    case $opt in
+    j) jflag=true; jobid=$OPTARG ;; # Handle -j
+    m) mflag=true; CLIENT_IP=$OPTARG ;; # Handle -m
+    \?) echo "Usage: $0 [-j] job-id [-m] ip-address" ; exit 1 ;;#Handle error.
+    esac
+done
+
+if ! $jflag
+then
+    echo "-j must be included to specify a job"
+    exit 1
+fi
+
+if ! $mflag
+then
+    echo "-m flag must be included to specify a machine"
+        exit 1
+fi
+
+# Check if the Bacula Configuration file already exists on the client
+# machine.
+#ssh -i $KEY_FILE ec2-user@$CLIENT_IP ls /etc/bacula/
+
+
+echo 'Looking for signs of a non-default configuration file'
+res=`ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo grep FD_PASSWORD /etc/bacula/bacula-fd.conf`
+if [[ $res =~ .*FD_PASSWORD*. ]] 
+then
+	echo '...SUCCESS...'
+else
+	echo 'FAILED: A non-default Bacula configuration file exists on the client.'
+	exit 1
+fi
+
+echo 'Creating a special configuration file just for you :)'
+PWD=`openssl rand -base64 32 | sed -e 's:\/:-:g'`
+cp bacula-fd.conf bacula-fd-temp.conf
+sed -i -e 's/DIRECTOR_PASSWORD/'$PWD'/g' bacula-fd-temp.conf
+sed -i -e 's/FD_NAME/'$CLIENT_IP'-fd/g' bacula-fd-temp.conf
+
+echo 'Copying bacula-fd-temp.conf to new client' 
+scp -i $KEY_FILE bacula-fd-temp.conf ec2-user@$CLIENT_IP:~/
+echo 'Moving bacula-fd-temp.conf into /etc/bacula/bacula-fd.conf'
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo mv /home/ec2-user/bacula-fd-temp.conf /etc/bacula/bacula-fd.conf 
+
+
+echo 'Restarting the client file daemon'
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo service bacula-fd stop     # Should fail, but included just to be sure.
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sleep 1
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo service bacula-fd start
+
+echo "Attempting restore."
+
+# Sanity check to avoid overwriting the file do_restore_script.
+if [ -f do_restore_script ]
+then
+    echo 'Please remove or rename do_restore_script file before running this script'
+    exit 1
+fi
+
+echo $CLIENT_IP
+
+# Stop Bacula
+sudo service bacula-dir stop
+
+# Add the new client to Bacula's configuration
+echo $'Client {\n\tName = '$CLIENT_IP$'-fd\n\tAddress = '$CLIENT_IP$'\n\tFDPort = 9102\n\tCatalog = MyCatalog\n\tPassword = "'$PWD$'"\n\tFile Retention = 30 days\n\tJob Retention = 6 months\n\tAutoPrune = yes\n}' >> /etc/bacula/bacula-dir.conf
+
+# Start Bacula
+sudo service bacula-dir start
+sleep 1
+
+# Run th Bacula restore job.
+echo $'restore all client='$CLIENT_IP$'-fd jobid='$jobid$'\ndone\nyes\nquit\n' >> do_restore_script
+
+
+
+qid=`/usr/sbin/bconsole < do_restore_script | grep 'Job queued. JobId='`
+echo "${qid//[!0-9]}"
+rm do_restore_script
+
