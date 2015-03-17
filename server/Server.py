@@ -20,17 +20,35 @@ class Example(xmlrpc.XMLRPC):
 	"""
 	return Users.list_users()    
 
-    def xmlrpc_create_backup(self, user, auth, IP, fdPassword, dir):
+    def xmlrpc_create_backup(self, user, auth, IP, fd, dir):
 	"""
 	Create a backup job description for the user.
 	"""
-	return Users.create_job(user, auth, IP, fdPassword, dir)
+	return Users.create_job(user, auth, IP, fd, dir)
 
     def xmlrpc_list_jobs(self, user, auth):
 	"""
 	List the user's jobs.
 	"""
 	return Users.list_jobs(user, auth)
+
+    def xmlrpc_list_restore_options(self, user, auth):
+	"""
+	List the jobs the user can use for a restore
+	"""
+	return Users.list_restore_options(user, auth)
+
+    def xmlrpc_restore_new_machine(self, user, auth, IP, jobid):
+	"""
+	Restore a new machine from selected job id
+	"""
+	if not Users.auth_job_access(user, jobid):
+	    return 'Permission Denied, you do not have access to this job.'
+    
+	from subprocess import call
+	status = call("./restore-new-machine.sh -m " + IP + " -j " + jobid, shell=True)
+	print status
+	return 'Done'
 
     def xmlrpc_fault(self):
         """
@@ -46,5 +64,6 @@ if __name__ == '__main__':
     from twisted.internet import reactor
     r =  Example()
     
-    reactor.listenTCP(7080, server.Site(r))
+    reactor.listenTCP(9080, server.Site(r))
     reactor.run()
+

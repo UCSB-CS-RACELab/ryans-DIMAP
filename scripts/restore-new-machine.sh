@@ -41,8 +41,11 @@ fi
 # machine.
 #ssh -i $KEY_FILE ec2-user@$CLIENT_IP ls /etc/bacula/
 
+echo 'Setting up host information'
+./updateHosts.sh $CLIENT_IP
 
 echo -n 'Checking Pre-Existing Config File'
+
 res=`ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo grep FD_PASSWORD /etc/bacula/bacula-fd.conf 2> /dev/null`
 if [[ $res =~ .*FD_PASSWORD*. ]] 
 then
@@ -101,3 +104,10 @@ echo $'restore all client='$CLIENT_IP$'-fd jobid='$jobid$'\ndone\nyes\nquit\n' >
 qid=`/usr/sbin/bconsole < do_restore_script | grep 'Job queued. JobId='`
 echo "Restore Job ID = ${qid//[!0-9]}"
 rm do_restore_script
+
+sleep 3
+
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo cp /home/ec2-user/home/ec2-user/* /home/ec2-user/
+ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo rm -rf /home/ec2-user/home
+
+

@@ -16,17 +16,46 @@ def auth_usr(user, auth):
 	print result[0]
 	allow = True
     return allow
+
+def auth_job_access(user, jobid):
+    allow = False
+
+    q= 'SELECT J.JobId FROM JobIDs J WHERE J.User ="' + user + '" AND J.JobID ="'  + jobid + '";'
+    print q
+    result = query(q)
+    if (len(result) > 0):
+        print len(result)
+        print result[0]
+        allow = True
+    return allow
+
+def list_restore_options(user, auth):
+    # authorize the user. 
+    if (not auth_usr(user, auth)):
+	return 'List Restore Options: Permission Denied, Authentication Failure.'
+    
+    q = 'SELECT J.JobID FROM JobIDs J, Users U WHERE U.name=J.User AND U.name="' + user + '" ;'
+    r = [] 
+    rows = query(q)
+    print rows
+    if (not rows): return 'List Restore Options: Failed to list options.'
+    for row in rows:
+	r.append(row[0])
+    
+    return r
     
 
-def create_job(user, auth, IP, fdPassword, dir):
+     
+
+def create_job(user, auth, IP, fdname, dir):
     r = ''
     # authorize the user. 
     if (not auth_usr(user, auth)):
 	return 'Create Job: Permission Denied, Authentication Failure.'
     
     # attempt to create the job.
-    q = 'INSERT INTO BackupJobs (IP, User, Directory, FdPassword, SysTag) VALUES ("' + IP + \
-	'", "' + user + '", "' + dir + '", "' + fdPassword + '", "W");'
+    q = 'INSERT INTO BackupJobs (IP, User, Directory, FdName, SysTag) VALUES ("' + IP + \
+	'", "' + user + '", "' + dir + '", "' + fdname + '", "W");'
     return query(q)
     
 def list_jobs(user, auth):
