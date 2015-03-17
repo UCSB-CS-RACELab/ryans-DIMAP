@@ -11,10 +11,13 @@ class BaculaResource:
 	
 	# loop through dictionary, writing keys and values.
 	for k, v in self.defaults().iteritems():
-	    if k in self.dictionary:
-		v = self.dictionary[k]
+	    #if k in self.dictionary:
+	    #v = self.dictionary[k]
 	    output += '  ' + k + ' = ' + v + '\n'
     
+	for k, v in self.dictionary.iteritems():
+	    output += '  ' + k + ' = ' + v + '\n'
+
 	for k, v in self.subResources.iteritems():
 	    output += '  ' + v.writeStr() + '\n'
      
