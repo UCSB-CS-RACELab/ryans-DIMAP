@@ -9,7 +9,7 @@
 # Date:  2/17/2015
 #
 
-SERVICE_HOME='/home/ec2-user/backup_service'
+SERVICE_HOME='/home/ec2-user/backup_service_0.2'
 
 CLIENT_IP=' '
 KEY_FILE=$SERVICE_HOME/backuptest.key

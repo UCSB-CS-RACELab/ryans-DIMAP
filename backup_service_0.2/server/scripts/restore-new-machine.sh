@@ -1,18 +1,18 @@
 #!/bin/bash
-# 
+#
 # Bash script that takes the job id of a Bacula backup and the IP address of a new machine with
-# Bacula installed (but otherwise no Bacula setup) and restores all files from the backup job to the 
+# Bacula installed (but otherwise no Bacula setup) and restores all files from the backup job to the
 # 'new' machine. Right now they will go to the directory /tmp/bacula-restores (this is specified in my
 # bacula-dir.conf).
-# 
+#
 # Author: Ryan Halbrook
 # Date:  2/17/2015
 #
 
-SERVICE_HOME='/home/ec2-user/backup_service'
+SERVICE_HOME='/home/ec2-user/backup_service_0.2'
 
 CLIENT_IP=' '
-KEY_FILE=$SERVICE_HOME/KEY_NAME.key
+KEY_FILE=$SERVICE_HOME/backuptest.key
 PWD=TEST_PWD
 
 jobid=' '
@@ -48,7 +48,7 @@ $SERVICE_HOME/server/scripts/updateHosts.sh $CLIENT_IP
 echo -n 'Checking Pre-Existing Config File'
 
 res=`ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo grep FD_PASSWORD /etc/bacula/bacula-fd.conf 2> /dev/null`
-if [[ $res =~ .*FD_PASSWORD*. ]] 
+if [[ $res =~ .*FD_PASSWORD*. ]]
 then
 	echo -e ' ... \x1b[32;01mDONE\x1b[39;49;00m'
 else
@@ -64,7 +64,7 @@ sed -i -e 's/FD_NAME/'$CLIENT_IP'-fd/g' bacula-fd-temp.conf
 echo -e ' ... \x1b[32;01mDONE\x1b[39;49;00m'
 
 
-echo -n 'Copying Config File to Client    ' 
+echo -n 'Copying Config File to Client    '
 scp -q -i $KEY_FILE bacula-fd-temp.conf ec2-user@$CLIENT_IP:~/
 ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo mv /home/ec2-user/bacula-fd-temp.conf /etc/bacula/bacula-fd.conf 2> /dev/null
 echo -e ' ... \x1b[32;01mDONE\x1b[39;49;00m'
@@ -95,7 +95,7 @@ echo $'Client {\n\tName = '$CLIENT_IP$'-fd\n\tAddress = '$CLIENT_IP$'\n\tFDPort 
 sudo service bacula-dir start
 sleep 1
 
-echo    'Attempting Restore to '$CLIENT_IP  
+echo    'Attempting Restore to '$CLIENT_IP
 
 # Run Bacula restore job.
 echo $'restore all client='$CLIENT_IP$'-fd jobid='$jobid$'\ndone\nyes\nquit\n' >> do_restore_script
@@ -106,9 +106,7 @@ qid=`/usr/sbin/bconsole < do_restore_script | grep 'Job queued. JobId='`
 echo "Restore Job ID = ${qid//[!0-9]}"
 rm do_restore_script
 
-sleep 3
+#sleep 3
 
-ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo cp /home/ec2-user/home/ec2-user/* /home/ec2-user/
-ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo rm -rf /home/ec2-user/home
-
-
+#ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo cp /home/ec2-user/home/ec2-user/* /home/ec2-user/
+#ssh -t -i $KEY_FILE ec2-user@$CLIENT_IP sudo rm -rf /home/ec2-user/home

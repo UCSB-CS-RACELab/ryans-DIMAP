@@ -9,14 +9,15 @@
 sub install {
     my ($name) = @_;
     print "Installing ".$name."\n";
-    if (!(system("yum install $name -y") == 0)) { 
+    if (!(system("yum install $name -y") == 0)) {
     	die "Failed to Install: $?";
     }
 }
 
 sub command {
     my($name) = @_;
-    if (!(system($name) == 0)) { 
+    print "Running command: ".$name."\n";
+    if (!(system($name) == 0)) {
     	die "Failed to Install: $?";
     }
 }
@@ -39,7 +40,7 @@ install("bacula-client");
 
 command("service mysqld start");
 
-# Configure the database for use with bacula. 
+# Configure the database for use with bacula.
 command("/usr/libexec/bacula/grant_mysql_privileges -u root -p");
 command("/usr/libexec/bacula/create_mysql_database -u root -p");
 command("/usr/libexec/bacula/make_mysql_tables -u root -p");
@@ -77,10 +78,13 @@ command("service bacula-fd start");
 
 install("python-twisted-web");
 
+#sudo yum install python-zope-interface4.x86_64
+#sudo yum install MySQL-python -y
+install("python-zope-interface4.x86_64");
+install("MySQL-python");
+
 #command("cp conf/auth_server.sh .");
 #command("ssh-keygen -t rsa");
 #command(
 
 print "Installation succcessful.\n"
-
-
